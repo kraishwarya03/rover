@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Farm Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green-deep:    #1a3a2a;
+    --green-mid:     #2e7d52;
+    --green-bright:  #4caf7d;
+    --green-glow:    #a8e6c1;
+    --soil-brown:    #8b5e3c;
+    --soil-light:    #d4a96a;
+    --blue-humid:    #3a7bd5;
+    --blue-light:    #a0c4ff;
+    --bg:            #0d1f17;
+    --bg2:           #142a1e;
+    --card-bg:       #1a3526;
+    --border:        rgba(76,175,125,0.2);
+    --text:          #e8f5ee;
+    --muted:         #7aad92;
+    --mono:          'Space Mono', monospace;
+    --sans:          'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(46,125,82,0.15) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 80%, rgba(58,123,213,0.10) 0%, transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative;
+    z-index: 1;
+    padding: 36px 40px 20px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+    color: var(--green-bright);
+    letter-spacing: 0.04em;
+  }
+  header .tagline {
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .live-badge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--green-glow);
+  }
+  .live-dot {
+    width: 8px; height: 8px;
+    background: var(--green-bright);
+    border-radius: 50%;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* ══════════════════════════════════
+     WEATHER BANNER
+  ══════════════════════════════════ */
+  #weatherBanner {
+    position: relative;
+    z-index: 1;
+    margin: 28px 40px 0;
+    border-radius: 20px;
+    border: 1px solid rgba(100,200,255,0.18);
+    background: linear-gradient(135deg, #0e2535 0%, #112a20 60%, #0d1f17 100%);
+    padding: 26px 30px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 22px;
+    align-items: stretch;
+  }
+
+  .weather-left {
+    flex: 1 1 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .weather-location {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: rgba(160,196,255,0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-family: var(--mono);
+  }
+  .weather-main-temp {
+    display: flex;
+    align-items: flex-start;
+    gap: 2px;
+    line-height: 1;
+  }
+  .big-temp {
+    font-family: var(--mono);
+    font-size: 4.2rem;
+    font-weight: 700;
+    color: #a0d4ff;
+    letter-spacing: -0.04em;
+  }
+  .temp-deg {
+    font-family: var(--mono);
+    font-size: 1.4rem;
+    color: #6aabdd;
+    margin-top: 8px;
+  }
+  .weather-desc {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: capitalize;
+  }
+  .weather-feels {
+    font-size: 0.73rem;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .weather-stats {
+    flex: 2 1 340px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+    gap: 10px;
+    align-content: center;
+  }
+  .wstat {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 11px 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .wstat-icon { font-size: 1rem; }
+  .wstat-label {
+    font-size: 0.6rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: var(--mono);
+  }
+  .wstat-value {
+    font-family: var(--mono);
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* 5-day forecast */
+  #forecastStrip {
+    flex: 100%;
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  #forecastStrip::-webkit-scrollbar { height: 3px; }
+  #forecastStrip::-webkit-scrollbar-thumb { background: rgba(76,175,125,0.3); border-radius: 99px; }
+  .fday {
+    flex: 1 0 74px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 70px;
+    transition: background 0.2s;
+  }
+  .fday:hover { background: rgba(255,255,255,0.07); }
+  .fday-name {
+    font-size: 0.6rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: var(--mono);
+  }
+  .fday-icon { font-size: 1.2rem; }
+  .fday-hi {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #a0d4ff;
+  }
+  .fday-lo {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  /* Crop recommendation */
+  #cropCard {
+    flex: 100%;
+    background: linear-gradient(90deg, rgba(46,125,82,0.2) 0%, rgba(30,80,50,0.12) 100%);
+    border: 1px solid rgba(76,175,125,0.32);
+    border-radius: 14px;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .crop-icon { font-size: 1.6rem; flex-shrink: 0; }
+  .crop-label {
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--green-bright);
+    font-family: var(--mono);
+    margin-bottom: 6px;
+  }
+  .crop-text {
+    font-size: 1.1rem;
+    color: var(--text);
+    font-weight: 500;
+    line-height: 1.55;
+  }
+  .crop-text strong { color: var(--green-glow); }
+
+  /* Timer row */
+  #weatherTimer {
+    flex: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: rgba(122,173,146,0.45);
+    letter-spacing: 0.08em;
+  }
+  .spin-ring {
+    width: 9px; height: 9px;
+    border: 1.5px solid rgba(76,175,125,0.4);
+    border-top-color: var(--green-bright);
+    border-radius: 50%;
+    display: inline-block;
+    animation: spin 1s linear infinite;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .spin-ring.active { opacity: 1; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Loading skeleton */
+  .loading-msg {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 30px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+  }
+  .loading-msg .spin-ring { opacity: 1; width: 14px; height: 14px; }
+
+  /* ══════════════════════════════════
+     SENSOR GRID
+  ══════════════════════════════════ */
+  main {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    padding: 28px 40px 36px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.25s, box-shadow 0.25s;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+  }
+  .card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    opacity: 0;
+    transition: opacity 0.25s;
+    pointer-events: none;
+  }
+  .card:hover::after { opacity: 1; }
+  .card.temp::after  { background: radial-gradient(circle at top right, rgba(255,150,60,0.07), transparent 65%); }
+  .card.humid::after { background: radial-gradient(circle at top right, rgba(58,123,213,0.09), transparent 65%); }
+  .card.soil::after  { background: radial-gradient(circle at top right, rgba(139,94,60,0.09), transparent 65%); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-label { display: flex; align-items: center; gap: 10px; }
+  .card-icon  { font-size: 1.3rem; line-height: 1; }
+  .card-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+  .status-badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  .status-ok   { background: rgba(76,175,125,0.15); color: var(--green-bright); border: 1px solid rgba(76,175,125,0.3); }
+  .status-warn { background: rgba(255,193,7,0.15);  color: #ffc107;             border: 1px solid rgba(255,193,7,0.3); }
+  .status-low  { background: rgba(255,100,60,0.15); color: #ff6c47;             border: 1px solid rgba(255,100,60,0.3); }
+
+  .card-value-row { display: flex; align-items: flex-end; gap: 6px; }
+  .card-value {
+    font-family: var(--mono);
+    font-size: 3.2rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .temp .card-value  { color: #ff9a50; }
+  .humid .card-value { color: var(--blue-light); }
+  .soil .card-value  { color: var(--soil-light); }
+  .card-unit { font-size: 1rem; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+
+  .chart-wrap { position: relative; height: 140px; width: 100%; }
+  .gauge-center-label {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .gauge-center-label .pct { font-family: var(--mono); font-size: 1.4rem; font-weight: 700; }
+  .gauge-center-label .lbl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+
+  .thermo-track { height: 12px; background: rgba(255,255,255,0.07); border-radius: 99px; overflow: hidden; margin-top: 4px; }
+  .thermo-fill  { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #ff9a50, #ff5722); transition: width 0.8s cubic-bezier(0.4,0,0.2,1); box-shadow: 0 0 10px rgba(255,140,50,0.5); }
+  .thermo-ticks { display: flex; justify-content: space-between; margin-top: 6px; font-family: var(--mono); font-size: 0.62rem; color: var(--muted); }
+
+  .range-hint { font-size: 0.72rem; color: var(--muted); display: flex; justify-content: space-between; padding-top: 4px; border-top: 1px solid var(--border); margin-top: auto; }
+
+  footer {
+    position: relative; z-index: 1;
+    text-align: center;
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: rgba(122,173,146,0.35);
+    letter-spacing: 0.08em;
+  }
+
+  @media (max-width: 600px) {
+    header, #weatherBanner, main { margin-left: 16px; margin-right: 16px; padding-left: 16px; padding-right: 16px; }
+    #weatherBanner { margin: 16px; }
+    main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🌱 SMART FARM MONITOR</h1>
+    <div class="tagline">Environmental Sensor Dashboard</div>
+  </div>
+  <div class="live-badge">
+    <span class="live-dot"></span>
+    LIVE
+  </div>
+</header>
+
+<!-- ═══════ WEATHER FORECAST ═══════ -->
+<div id="weatherBanner">
+  <div class="loading-msg">
+    <span class="spin-ring"></span>
+    DETECTING LOCATION &amp; FETCHING LIVE WEATHER…
+  </div>
+</div>
+
+<!-- ═══════ SENSOR CARDS ═══════ -->
+<main>
+  <div class="card temp">
+    <div class="card-header">
+      <div class="card-label">
+        <span class="card-icon">🌡️</span>
+        <span class="card-title">Temperature</span>
+      </div>
+      <span class="status-badge status-ok" id="tempStatus">NORMAL</span>
+    </div>
+    <div class="card-value-row">
+      <span class="card-value" id="tempVal">--</span>
+      <span class="card-unit">°C</span>
+    </div>
+    <div class="thermo-track">
+      <div class="thermo-fill" id="thermoFill" style="width:0%"></div>
+    </div>
+    <div class="thermo-ticks">
+      <span>0°</span><span>10°</span><span>20°</span><span>30°</span><span>40°</span><span>50°</span>
+    </div>
+    <div class="range-hint">
+      <span>Ideal: 18–28 °C</span>
+      <span id="tempRangeNote">—</span>
+    </div>
+  </div>
+
+  <div class="card humid">
+    <div class="card-header">
+      <div class="card-label">
+        <span class="card-icon">💧</span>
+        <span class="card-title">Humidity</span>
+      </div>
+      <span class="status-badge status-ok" id="humStatus">NORMAL</span>
+    </div>
+    <div class="card-value-row">
+      <span class="card-value" id="humVal">--</span>
+      <span class="card-unit">%</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="humidityGauge"></canvas>
+      <div class="gauge-center-label">
+        <span class="pct" id="humGaugeLabel" style="color:#a0c4ff">--</span>
+        <span class="lbl">HUMID</span>
+      </div>
+    </div>
+    <div class="range-hint">
+      <span>Ideal: 50–70 %</span>
+      <span id="humRangeNote">—</span>
+    </div>
+  </div>
+
+  <div class="card soil">
+    <div class="card-header">
+      <div class="card-label">
+        <span class="card-icon">🌱</span>
+        <span class="card-title">Soil Moisture</span>
+      </div>
+      <span class="status-badge status-ok" id="soilStatus">NORMAL</span>
+    </div>
+    <div class="card-value-row">
+      <span class="card-value" id="soilVal">--</span>
+      <span class="card-unit">%</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="soilGauge"></canvas>
+      <div class="gauge-center-label">
+        <span class="pct" id="soilGaugeLabel" style="color:#d4a96a">--</span>
+        <span class="lbl">MOIST</span>
+      </div>
+    </div>
+    <div class="range-hint">
+      <span>Ideal: 40–60 %</span>
+      <span id="soilRangeNote">—</span>
+    </div>
+  </div>
+</main>
+
+<footer>🌦 WEATHER AUTO-UPDATES EVERY 3 MINUTES &nbsp;·&nbsp; SMART FARM OS v2.1</footer>
+
+<!-- ═══════ SCRIPTS ═══════ -->
+<script>
+// ─────────────────────────────────────────────
+//  SENSOR DATA
+// ─────────────────────────────────────────────
+const TEMP = parseFloat("{{temp}}") || 24.5;
+const HUM  = parseFloat("{{hum}}")  || 62;
+const SOIL = parseFloat("{{soil}}") || 47;
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function setStatus(el, value, lo, hi, unit) {
+  const v = parseFloat(value);
+  if (v < lo) {
+    el.textContent = "LOW";
+    el.className = "status-badge status-low";
+    return `${(v - lo).toFixed(1)}${unit} below`;
+  } else if (v > hi) {
+    el.textContent = "HIGH";
+    el.className = "status-badge status-warn";
+    return `+${(v - hi).toFixed(1)}${unit} above`;
+  }
+  el.textContent = "NORMAL";
+  el.className = "status-badge status-ok";
+  return "Within range";
+}
+
+// Temperature bar
+const tempPct = clamp((TEMP / 50) * 100, 0, 100);
+document.getElementById("tempVal").textContent     = TEMP.toFixed(1);
+document.getElementById("thermoFill").style.width  = tempPct + "%";
+document.getElementById("tempRangeNote").textContent =
+  setStatus(document.getElementById("tempStatus"), TEMP, 18, 28, "°");
+
+// Gauge factory
+function makeGauge(canvasId, value, filledColor) {
+  const safe = clamp(value, 0.5, 99.5);
+  return new Chart(document.getElementById(canvasId), {
+    type: 'doughnut',
+    data: { datasets: [{ data: [safe, 100-safe], backgroundColor: [filledColor, "rgba(255,255,255,0.06)"], borderWidth: 0, hoverOffset: 0 }] },
+    options: { cutout:'72%', rotation:-120, circumference:240,
+      animation:{duration:900,easing:'easeInOutQuart'},
+      plugins:{legend:{display:false},tooltip:{enabled:false}}, events:[] }
+  });
+}
+
+makeGauge("humidityGauge", HUM, "rgba(100,170,255,0.85)");
+document.getElementById("humVal").textContent        = Math.round(HUM);
+document.getElementById("humGaugeLabel").textContent = Math.round(HUM) + "%";
+document.getElementById("humRangeNote").textContent  =
+  setStatus(document.getElementById("humStatus"), HUM, 50, 70, "%");
+
+makeGauge("soilGauge", SOIL, "rgba(212,169,106,0.85)");
+document.getElementById("soilVal").textContent        = Math.round(SOIL);
+document.getElementById("soilGaugeLabel").textContent = Math.round(SOIL) + "%";
+document.getElementById("soilRangeNote").textContent  =
+  setStatus(document.getElementById("soilStatus"), SOIL, 40, 60, "%");
+
+// ─────────────────────────────────────────────
+//  WEATHER ENGINE
+// ─────────────────────────────────────────────
+
+// WMO code → [description, emoji]
+const WMO = {
+  0:["Clear Sky","☀️"],1:["Mostly Clear","🌤️"],2:["Partly Cloudy","⛅"],3:["Overcast","☁️"],
+  45:["Foggy","🌫️"],48:["Icy Fog","🌫️"],51:["Light Drizzle","🌦️"],53:["Drizzle","🌦️"],
+  55:["Heavy Drizzle","🌧️"],61:["Light Rain","🌧️"],63:["Rain","🌧️"],65:["Heavy Rain","🌧️"],
+  71:["Light Snow","🌨️"],73:["Snow","❄️"],75:["Heavy Snow","❄️"],80:["Rain Showers","🌦️"],
+  81:["Heavy Showers","🌧️"],85:["Snow Showers","🌨️"],95:["Thunderstorm","⛈️"],99:["Severe Thunderstorm","⛈️"]
+};
+function wmoLabel(c) { return WMO[c] || ["Variable","🌡️"]; }
+
+const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function windDir(deg) {
+  return ["N","NE","E","SE","S","SW","W","NW"][Math.round(deg/45)%8];
+}
+
+// ── Crop recommendation logic ──────────────────────
+function cropRecommendation(temp, humidity, code, month) {
+  const rain  = [51,53,55,61,63,65,80,81,95,99].includes(code);
+  const snow  = [71,73,75,85].includes(code);
+  const clear = [0,1,2].includes(code);
+  const season = month<=1||month===11 ? "winter"
+               : month<=4            ? "spring"
+               : month<=7            ? "summer"
+               :                       "autumn";
+
+  if (snow || temp < 5)
+    return ["🥦","Cold, frosty weather — ideal time to grow <strong>kale, spinach, or winter wheat</strong>, which are frost-hardy and thrive in these conditions."];
+  if (temp < 15 && season === "spring")
+    return ["🥕","Cool spring ahead — sow <strong>carrots, peas, and lettuce</strong> now for a productive early harvest before the summer heat arrives."];
+  if (temp >= 15 && temp <= 22 && rain)
+    return ["🌽","Warm rainy season — excellent for <strong>maize (corn)</strong>, which needs consistent moisture and mild warmth for strong germination."];
+  if (temp >= 22 && temp <= 30 && clear && humidity < 55)
+    return ["🌻","Hot, sunny, and dry — grow <strong>sunflowers or sorghum</strong>, drought-tolerant crops that flourish in full sun with lower irrigation needs."];
+  if (temp >= 22 && temp <= 32 && humidity >= 60)
+    return ["🍅","Warm and humid — prime conditions for <strong>tomatoes and chilli peppers</strong>; ensure airflow to prevent fungal disease."];
+  if (temp > 32 && humidity < 50)
+    return ["🌵","Intense heat, low humidity — consider <strong>millets or cotton</strong>, crops well-adapted to arid, high-temperature environments."];
+  if (temp > 30 && humidity >= 55)
+    return ["🌾","Hot and humid — perfect conditions for <strong>paddy rice</strong>; maintain waterlogged fields and monitor for pests closely."];
+  if (season === "autumn" && temp >= 10 && temp <= 22)
+    return ["🧅","Mild autumn temperatures — ideal for planting <strong>onions, garlic, and winter barley</strong> now for a spring harvest."];
+  return ["🌿","Stable, temperate conditions — a versatile window for <strong>mixed greens, herbs, or legumes</strong> like beans and lentils."];
+}
+
+// ── Countdown timer ────────────────────────────────
+let countdown = 180;
+let countdownInterval = null;
+
+function startCountdown() {
+  countdown = 180;
+  clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    countdown = Math.max(0, countdown - 1);
+    const el = document.getElementById("timerCount");
+    if (el) {
+      const m = Math.floor(countdown / 60);
+      const s = String(countdown % 60).padStart(2, "0");
+      el.textContent = `${m}:${s}`;
+    }
+  }, 1000);
+}
+
+// ── Render banner ──────────────────────────────────
+function renderWeather(data, location) {
+  const c = data.current;
+  const d = data.daily;
+
+  const temp    = c.temperature_2m;
+  const feels   = c.apparent_temperature;
+  const humid   = c.relative_humidity_2m;
+  const wind    = c.wind_speed_10m;
+  const windD   = c.wind_direction_10m;
+  const code    = c.weather_code;
+  const precip  = c.precipitation;
+  const press   = Math.round(c.surface_pressure);
+  const uv      = c.uv_index !== undefined ? c.uv_index : "—";
+
+  const [desc, emoji] = wmoLabel(code);
+  const now           = new Date();
+  const month         = now.getMonth();
+  const [cIcon, cText] = cropRecommendation(temp, humid, code, month);
+
+  // Forecast
+  let forecastHTML = "";
+  for (let i = 0; i < Math.min(5, d.time.length); i++) {
+    const dt = new Date(d.time[i] + "T00:00:00");
+    const [, fe] = wmoLabel(d.weather_code[i]);
+    forecastHTML += `<div class="fday">
+      <div class="fday-name">${i===0?"Today":DAYS[dt.getDay()]}</div>
+      <div class="fday-icon">${fe}</div>
+      <div class="fday-hi">${Math.round(d.temperature_2m_max[i])}°</div>
+      <div class="fday-lo">${Math.round(d.temperature_2m_min[i])}°</div>
+    </div>`;
+  }
+
+  const timeStr = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+
+  document.getElementById("weatherBanner").innerHTML = `
+    <!-- Left: main temp -->
+    <div class="weather-left">
+      <div class="weather-location">📍 ${location} &nbsp;·&nbsp; ${DAYS[now.getDay()]} ${now.getDate()} ${MONTHS[month]}</div>
+      <div class="weather-main-temp">
+        <span class="big-temp">${temp.toFixed(1)}</span>
+        <span class="temp-deg">°C</span>
+      </div>
+      <div class="weather-desc">${emoji} ${desc}</div>
+      <div class="weather-feels">Feels like ${feels.toFixed(1)} °C</div>
+    </div>
+
+    <!-- Right: stat tiles -->
+    <div class="weather-stats">
+      <div class="wstat"><span class="wstat-icon">💧</span><span class="wstat-label">Humidity</span><span class="wstat-value">${humid}%</span></div>
+      <div class="wstat"><span class="wstat-icon">💨</span><span class="wstat-label">Wind</span><span class="wstat-value">${wind} km/h ${windDir(windD)}</span></div>
+      <div class="wstat"><span class="wstat-icon">🌧️</span><span class="wstat-label">Precip</span><span class="wstat-value">${precip} mm</span></div>
+      <div class="wstat"><span class="wstat-icon">🔵</span><span class="wstat-label">Pressure</span><span class="wstat-value">${press} hPa</span></div>
+      <div class="wstat"><span class="wstat-icon">☀️</span><span class="wstat-label">UV Index</span><span class="wstat-value">${uv}</span></div>
+      <div class="wstat"><span class="wstat-icon">🌅</span><span class="wstat-label">Sunrise</span><span class="wstat-value">${d.sunrise[0].slice(11)}</span></div>
+      <div class="wstat"><span class="wstat-icon">🌇</span><span class="wstat-label">Sunset</span><span class="wstat-value">${d.sunset[0].slice(11)}</span></div>
+      <div class="wstat"><span class="wstat-icon">🌡️</span><span class="wstat-label">High / Low</span><span class="wstat-value">${Math.round(d.temperature_2m_max[0])}° / ${Math.round(d.temperature_2m_min[0])}°</span></div>
+    </div>
+
+    <!-- 5-day forecast -->
+    <div id="forecastStrip">${forecastHTML}</div>
+
+    <!-- Crop recommendation -->
+    <div id="cropCard">
+      <span class="crop-icon">${cIcon}</span>
+      <div>
+        <div class="crop-label">🌾 Seasonal Crop Recommendation</div>
+        <div class="crop-text">${cText}</div>
+      </div>
+    </div>
+
+    <!-- Update timer -->
+    <div id="weatherTimer">
+      <span class="spin-ring" id="spinRing"></span>
+      UPDATED AT ${timeStr} &nbsp;·&nbsp; NEXT UPDATE IN <span id="timerCount">3:00</span>
+    </div>
+  `;
+
+  startCountdown();
+}
+
+// ── API call ────────────────────────────────────────
+async function fetchWeather(lat, lon, location) {
+  const ring = document.getElementById("spinRing");
+  if (ring) ring.classList.add("active");
+
+  const url = `https://api.open-meteo.com/v1/forecast`
+    + `?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`
+    + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,`
+    + `precipitation,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m,uv_index`
+    + `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset`
+    + `&forecast_days=5&timezone=auto`;
+
+  try {
+    const res  = await fetch(url);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    renderWeather(data, location);
+  } catch (err) {
+    document.getElementById("weatherBanner").innerHTML =
+      `<div class="loading-msg">⚠️ Weather data unavailable — check your internet connection.</div>`;
+  }
+}
+
+// ── Reverse geocode ─────────────────────────────────
+async function reverseGeocode(lat, lon) {
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+      { headers: { "Accept-Language": "en" } }
+    );
+    const d = await r.json();
+    const a = d.address;
+    return (a.city || a.town || a.village || a.county || "Your Location")
+           + (a.country_code ? ", " + a.country_code.toUpperCase() : "");
+  } catch { return "Your Location"; }
+}
+
+// ── Bootstrap ───────────────────────────────────────
+async function startWeather(lat, lon, locationName) {
+  await fetchWeather(lat, lon, locationName);
+  setInterval(() => fetchWeather(lat, lon, locationName), 3 * 60 * 1000);
+}
+
+function initWeather() {
+  if (!navigator.geolocation) {
+    startWeather(12.9716, 77.5946, "Bengaluru, IN");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      const name = await reverseGeocode(lat, lon);
+      startWeather(lat, lon, name);
+    },
+    () => startWeather(12.9716, 77.5946, "Bengaluru, IN"),
+    { timeout: 8000 }
+  );
+}
+
+initWeather();
+</script>
+</body>
+</html>
